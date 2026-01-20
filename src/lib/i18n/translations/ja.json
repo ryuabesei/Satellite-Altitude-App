@@ -1,0 +1,44 @@
+{
+    "header": {
+        "title": "人工衛星高度トラッカー",
+        "subtitle": "リアルタイムTLEデータを使用して衛星の高度変動を可視化"
+    },
+    "form": {
+        "noradId": {
+            "label": "NORAD カタログ番号",
+            "placeholder": "例: 25544 (ISS)",
+            "help": "例: 25544 (国際宇宙ステーション)"
+        },
+        "stepSeconds": {
+            "label": "時間ステップ (秒)",
+            "placeholder": "60",
+            "help": "サンプリング間隔 (1-3600秒)"
+        },
+        "startTime": {
+            "label": "開始時刻 (UTC)"
+        },
+        "endTime": {
+            "label": "終了時刻 (UTC)"
+        },
+        "submit": "高度を計算",
+        "calculating": "計算中..."
+    },
+    "error": {
+        "title": "エラー"
+    },
+    "results": {
+        "missionDetails": "ミッション詳細",
+        "altitudeOverTime": "時間経過に伴う高度",
+        "statistics": "統計情報",
+        "noradId": "NORAD ID",
+        "dataPoints": "データポイント数",
+        "tleEpoch": "TLE エポック",
+        "minAltitude": "最小高度",
+        "maxAltitude": "最大高度",
+        "avgAltitude": "平均高度",
+        "range": "変動範囲",
+        "timeUTC": "時刻 (UTC)",
+        "altitudeKm": "高度 (km)",
+        "km": "km"
+    }
+}

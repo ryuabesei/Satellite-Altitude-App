@@ -204,26 +204,163 @@ TLEデータは [CelesTrak](https://celestrak.org/) から取得しています:
 - リアルタイム取得（データベース保存なし）
 - 開始時刻に最も近いepochのTLEを使用
 
-### Altitude Calculation
+### TLE (Two-Line Element Set) とは
 
-高度の定義:
+TLE は衛星の軌道要素を表す標準フォーマットです。3行で構成されます：
+
 ```
-altitude_km = geocentric_distance_km - 6371.0
+ISS (ZARYA)             
+1 25544U 98067A   26019.20762778  .00012345  00000-0  12345-3 0  9999
+2 25544  51.6420 123.4567 0001234  12.3456 347.7890 15.12345678123456
 ```
 
-- **geocentric_distance**: 地球中心から衛星までの距離
-- **6371.0 km**: 地球の平均半径
-- **伝搬モデル**: SGP4 (Simplified General Perturbations)
+**Line 0**: 衛星名  
+**Line 1**: カタログ番号、epoch（元期）、平均運動の1次微分など  
+**Line 2**: 軌道傾斜角、昇交点赤経、離心率、近地点引数、平均近点角、平均運動など
 
-### Data Point Limits
+### SGP4 伝搬モデル
 
-- 最大データポイント数: **20,000点**
-- 超過時: 400エラーを返却
-- 推奨: step_secondsを増やすか、期間を短縮
+**SGP4 (Simplified General Perturbations 4)** は地球周回衛星の位置と速度を予測する数学モデルです。
 
-### CORS Configuration
+**考慮する摂動項**:
+- 地球の扁平率 (J2, J3, J4)
+- 大気抵抗（低軌道衛星の場合）
+- 太陽・月の重力の影響（簡略化）
 
-開発環境では `localhost:3000` からのリクエストを許可しています。本番環境では `backend/.env` で適切なオリジンを設定してください。
+**入力**:
+- TLE（軌道要素）
+- 予測したい時刻（UTC）
+
+**出力**:
+- 衛星の位置ベクトル (x, y, z) [km]（TEME座標系）
+- 衛星の速度ベクトル (vx, vy, vz) [km/s]
+
+### 高度計算の実装
+
+本アプリケーションでは **Skyfield** ライブラリを使用してSGP4計算を実行します。
+
+#### ステップ1: TLE読み込み
+
+```python
+from skyfield.api import EarthSatellite, load
+
+ts = load.timescale()
+satellite = EarthSatellite(tle_line1, tle_line2, "Satellite", ts)
+```
+
+#### ステップ2: 時刻配列の生成
+
+```python
+# ユーザー指定の開始・終了時刻とステップ秒数から時刻配列を生成
+current_time = start_time
+while current_time <= end_time:
+    t = ts.utc(current_time.year, current_time.month, current_time.day,
+               current_time.hour, current_time.minute, current_time.second)
+    # 計算処理
+    current_time += timedelta(seconds=step_seconds)
+```
+
+#### ステップ3: 地心位置の計算
+
+```python
+# 衛星の地心位置を取得
+geocentric = satellite.at(t)
+position = geocentric.position.km  # [x, y, z] in km (TEME座標系)
+```
+
+#### ステップ4: 地心距離の計算
+
+```python
+# 3次元ベクトルのノルム（ユークリッド距離）
+geocentric_distance = sqrt(x^2 + y^2 + z^2)
+
+# Pythonコードでの実装:
+geocentric_distance = (position[0]**2 + position[1]**2 + position[2]**2) ** 0.5
+```
+
+#### ステップ5: 高度の算出
+
+```python
+# 高度 = 地心距離 - 地球の平均半径
+altitude_km = geocentric_distance - 6371.0
+```
+
+### 高度定義の詳細
+
+**地心距離 (Geocentric Distance)**:
+- 地球の中心から衛星までの直線距離
+- TEME (True Equator Mean Equinox) 座標系で計算
+- 単位: キロメートル [km]
+
+**地球の平均半径**:
+- 本アプリでは **6371.0 km** を使用
+- これは地球を完全な球体と仮定した場合の平均値
+- 実際の地球は回転楕円体ですが、MVPとして球体近似を採用
+
+**高度 (Altitude)**:
+```
+altitude = geocentric_distance - 6371.0 [km]
+```
+
+この定義により：
+- ISSの高度 ≈ 400-420 km
+- 静止衛星の高度 ≈ 35,786 km
+
+### 座標系: TEME
+
+**TEME (True Equator Mean Equinox)**:
+- SGP4モデルが出力する標準座標系
+- 地球の真の赤道面と平均春分点を基準とする慣性座標系
+- 地球の自転とは独立（恒星に対して固定）
+
+**特徴**:
+- X軸: 平均春分点方向
+- Z軸: 地球の真の回転軸（北極）方向
+- Y軸: 右手系を構成する方向
+
+### 計算精度と制限事項
+
+**精度**:
+- SGP4モデルは一般的に **数km程度の誤差**
+- TLEの鮮度に依存（古いTLEほど誤差が増加）
+- 予測期間が長いほど誤差が累積
+
+**制限事項**:
+1. **球体近似**: 地球を完全な球体として扱う
+2. **TLE単一使用**: 計算期間中、1つのTLEのみを使用（実際は定期的に更新が必要）
+3. **大気密度**: 実際の大気密度変動を完全には考慮していない
+4. **長期予測**: 数日～数週間の予測が限界（それ以上は誤差が大きい）
+
+### 数式まとめ
+
+1. **地心距離**:
+   ```
+   r = √(x² + y² + z²)
+   ```
+
+2. **高度**:
+   ```
+   h = r - R_earth
+   where R_earth = 6371.0 km
+   ```
+
+3. **データポイント数**:
+   ```
+   N = ⌊(t_end - t_start) / Δt⌋ + 1
+   where Δt = step_seconds
+   ```
+
+### ライブラリ
+
+- **Skyfield** (v1.49): 天文計算ライブラリ
+  - SGP4実装を内包
+  - 高精度な時刻処理
+  - 座標変換機能
+  - NASA JPLの DE421 惑星暦をサポート
+
+- **sgp4** (組み込み): Skyfieldが内部で使用
+  - SGP4/SDP4アルゴリズムの実装
+  - TLE解析機能
 
 ## 🛠️ Development Notes
 

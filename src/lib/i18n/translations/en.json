@@ -1,0 +1,44 @@
+{
+    "header": {
+        "title": "Satellite Altitude Tracker",
+        "subtitle": "Visualize satellite altitude variations using real-time TLE data"
+    },
+    "form": {
+        "noradId": {
+            "label": "NORAD Catalog Number",
+            "placeholder": "e.g., 25544 (ISS)",
+            "help": "Example: 25544 (International Space Station)"
+        },
+        "stepSeconds": {
+            "label": "Time Step (seconds)",
+            "placeholder": "60",
+            "help": "Sampling interval (1-3600 seconds)"
+        },
+        "startTime": {
+            "label": "Start Time (UTC)"
+        },
+        "endTime": {
+            "label": "End Time (UTC)"
+        },
+        "submit": "Calculate Altitude",
+        "calculating": "Calculating..."
+    },
+    "error": {
+        "title": "Error"
+    },
+    "results": {
+        "missionDetails": "Mission Details",
+        "altitudeOverTime": "Altitude Over Time",
+        "statistics": "Statistics",
+        "noradId": "NORAD ID",
+        "dataPoints": "Data Points",
+        "tleEpoch": "TLE Epoch",
+        "minAltitude": "Min Altitude",
+        "maxAltitude": "Max Altitude",
+        "avgAltitude": "Avg Altitude",
+        "range": "Range",
+        "timeUTC": "Time (UTC)",
+        "altitudeKm": "Altitude (km)",
+        "km": "km"
+    }
+}
