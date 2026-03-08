@@ -73,16 +73,15 @@ export default function Home() {
         step_seconds: stepSeconds,
       });
 
-    const response = await fetch(`/api/altitude?${params.toString()}`);
+      const response = await fetch(`/api/altitude?${params.toString()}`);
 
       if (!response.ok) {
-        // 可能なら json を読む（CORSやネットワークエラー時はここに来る前に throw される）
-        let detail = "Failed to fetch altitude data";
+        let detail = `HTTP ${response.status}: Failed to fetch altitude data`;
         try {
           const errorData = await response.json();
-          detail = errorData?.detail || detail;
+          detail = errorData?.detail || errorData?.error || detail;
         } catch {
-          // ignore
+          // ignore JSON parse error
         }
         throw new Error(detail);
       }

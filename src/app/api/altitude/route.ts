@@ -3,14 +3,29 @@ import * as satellite from "satellite.js";
 
 const EARTH_RADIUS_KM = 6371;
 
+// Increase Vercel function timeout (requires Pro plan for > 10s; default is 10s)
+export const maxDuration = 30;
+export const runtime = "nodejs";
+
 async function fetchTLE(norad: number) {
   const url = `https://celestrak.org/NORAD/elements/gp.php?CATNR=${norad}&FORMAT=TLE`;
-  const res = await fetch(url, {
-    headers: {
-      "User-Agent": "SatelliteAltitudeApp/1.0 (Next.js/Vercel) contact: user@example.com",
-    },
-    next: { revalidate: 3600 },
-  });
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 second timeout
+
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      signal: controller.signal,
+      headers: {
+        "User-Agent": "SatelliteAltitudeApp/1.0 (Next.js)",
+        Accept: "text/plain",
+      },
+      cache: "no-store",
+    });
+  } finally {
+    clearTimeout(timeoutId);
+  }
 
   if (!res.ok) {
     const errorText = await res.text().catch(() => "");
